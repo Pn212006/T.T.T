@@ -66,7 +66,14 @@ public:
         cout << "\n--- Battle Tic-Tac-Toe Setup ---\n";
         player1Mark = getCustomMark(1);
         player1Type = getArchetype(1);
-        player2Mark = getCustomMark(2);
+
+        while (true) {
+            player2Mark = getCustomMark(2);
+            if (player2Mark == player1Mark) {
+                cout << "That mark is already taken by Player 1. Choose a different one.\n";
+            } else break;
+        }
+
         player2Type = getArchetype(2);
         cout << "\nPlayer 1: " << player1Mark << " (" << player1Type << ")\n";
         cout << "Player 2: " << player2Mark << " (" << player2Type << ")\n\n";
@@ -221,14 +228,19 @@ public:
             printBoard();
             if (battleMode) {
                 string type = (currentPlayer == player1Mark) ? player1Type : player2Type;
-                cout << "Player " << currentPlayer << " (" << type << ") choose:\n";
-                cout << "1. Regular move\n2. Use special ability\n> ";
                 string choice;
-                cin >> choice;
+                while (true) {
+                    cout << "Player " << currentPlayer << " (" << type << ") choose:\n";
+                    cout << "1. Regular move\n2. Use special ability\n> ";
+                    cin >> choice;
+                    if (choice == "1" || choice == "2") break;
+                    cout << "Invalid input! Please enter 1 or 2.\n";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
                 if (choice == "2") {
                     if (type == "alchemist") alchemistSwap();
                     else if (type == "paladin") paladinShift();
-                    else cout << "Invalid archetype.\n";
                 } else {
                     int move = getPlayerMove();
                     makeMove(move);
