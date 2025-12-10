@@ -51,19 +51,22 @@ public:
             if(input.size()==1 && isdigit(input[0])){
                 move = input[0]-'0';
                 if(move<1||move>9 || board[move-1]==player1Mark || board[move-1]==player2Mark)
-                    cout << "Invalid move!\n";
+                    cout << "Invalid move! Turn skipped.\n";
                 else return move;
-            } else cout << "Invalid input!\n";
+            } else {
+                cout << "Invalid input! Turn skipped.\n";
+                return -1;
+            }
         }
     }
 
     int getRandomMove(){
         vector<int> moves;
-        for(int i=0;i<9;i++) if(board[i]!='X' && board[i]!='O') moves.push_back(i+1);
+        for(int i=0;i<9;i++) if(board[i]!=player1Mark && board[i]!=player2Mark) moves.push_back(i+1);
         return moves[rand()%moves.size()];
     }
 
-    void makeMove(int move){ board[move-1] = currentPlayer; }
+    void makeMove(int move){ if(move!=-1) board[move-1] = currentPlayer; }
 
     bool checkWin() {
         int wins[8][3] = {
@@ -84,6 +87,38 @@ public:
 
     void switchPlayer() { currentPlayer = (currentPlayer==player1Mark)?player2Mark:player1Mark; }
 
+    void alchemistSwap() {
+        string a,b;
+        cout << "Enter two positions (1-9) to swap: ";
+        cin >> a >> b;
+        if(a.size()!=1 || b.size()!=1 || !isdigit(a[0]) || !isdigit(b[0])){
+            cout << "Invalid input! Turn skipped.\n";
+            return;
+        }
+        int p1=a[0]-'0', p2=b[0]-'0';
+        if(p1<1 || p1>9 || p2<1 || p2>9 || p1==p2){
+            cout << "Invalid positions! Turn skipped.\n";
+            return;
+        }
+        swap(board[p1-1], board[p2-1]);
+    }
+
+    void paladinShift() {
+        string from,to;
+        cout << "Enter mark to move and target space (1-9): ";
+        cin >> from >> to;
+        if(from.size()!=1 || to.size()!=1 || !isdigit(from[0]) || !isdigit(to[0])){
+            cout << "Invalid input! Turn skipped.\n";
+            return;
+        }
+        int src=from[0]-'0', dst=to[0]-'0';
+        if(src<1 || src>9 || dst<1 || dst>9 || src==dst){
+            cout << "Invalid positions! Turn skipped.\n";
+            return;
+        }
+        swap(board[src-1], board[dst-1]);
+    }
+
     bool battleRound(int &playerHealth, int playerAttack, int playerDefense,
                      int &opponentHealth, int opponentAttack, int opponentDefense,
                      string opponentName = "") {
@@ -94,30 +129,37 @@ public:
 
         while(true){
             printBoard();
-            int move = (currentPlayer==player1Mark)? getPlayerMove() : getRandomMove();
+            int move;
+            if(currentPlayer==player1Mark){
+                string choice;
+                cout << "Choose: 1. Regular move 2. Special ability: ";
+                cin >> choice;
+                if(choice.size()!=1 || (choice[0]!='1' && choice[0]!='2')) move=-1;
+                else if(choice[0]=='1') move=getPlayerMove();
+                else{
+                    if(player1Type=="Alchemist") alchemistSwap();
+                    else if(player1Type=="Paladin") paladinShift();
+                    move=-1;
+                }
+            } else move=getRandomMove();
+
             makeMove(move);
 
             if(checkWin()){
                 if(currentPlayer==player1Mark){
-                    int dmg = max(0, playerAttack-opponentDefense);
+                    int dmg=max(0, playerAttack-opponentDefense);
                     opponentHealth -= dmg;
                     cout << "You won this round! Opponent lost " << dmg << " health.\n";
                 } else {
-                    int dmg = max(0, opponentAttack-playerDefense);
-                    if(opponentName == "Dragon"){
-                        int abilityRoll = rand()%2;
-                        if(abilityRoll == 0){
-                            cout << "Dragon uses Fire Breath! Extra 10 damage!\n";
-                            dmg += 10;
-                        } else {
-                            cout << "Dragon uses Tail Swipe! Your defense is reduced by 5 for this round!\n";
-                            playerDefense = max(0, playerDefense-5);
-                            dmg = max(0, opponentAttack-playerDefense);
-                        }
+                    int dmg=max(0, opponentAttack-playerDefense);
+                    if(opponentName=="Dragon"){
+                        int roll=rand()%2;
+                        if(roll==0){ cout << "Dragon uses Fire Breath! +10 damage\n"; dmg+=10; }
+                        else{ cout << "Dragon uses Tail Swipe! Defense reduced 5\n"; dmg=max(0, opponentAttack-(playerDefense-5)); }
                     }
                     playerHealth -= dmg;
                     cout << "Opponent won this round! You lost " << dmg << " health.\n";
-                    playerDefense = originalPlayerDefense;
+                    playerDefense=originalPlayerDefense;
                 }
                 return (playerHealth>0 && opponentHealth>0);
             } else if(checkTie()){
@@ -130,10 +172,10 @@ public:
 
     void playPvP() {
         resetBoard();
-        currentPlayer = 'X';
+        currentPlayer='X';
         while(true){
             printBoard();
-            int move = getPlayerMove();
+            int move=getPlayerMove();
             makeMove(move);
             if(checkWin()){
                 printBoard();
@@ -144,7 +186,7 @@ public:
                 cout << "It's a tie!\n";
                 break;
             }
-            currentPlayer = (currentPlayer=='X')?'O':'X';
+            currentPlayer=(currentPlayer=='X')?'O':'X';
         }
     }
 };
@@ -158,66 +200,59 @@ struct Character {
     int gold;
 };
 
+int getStrictInput(vector<int> validChoices){
+    string input;
+    while(true){
+        cin >> input;
+        if(input.size()==1 && isdigit(input[0])){
+            int val=input[0]-'0';
+            for(int v:validChoices) if(val==v) return val;
+        }
+        cout << "Invalid input! Enter only one valid number: ";
+    }
+}
+
 void event(Character &player){
     cout << "\n--- Event ---\n";
-    cout << "You find a potion or a training dummy.\n";
-    cout << "1. Drink potion (+20 health)\n2. Train (+5 attack, +5 defense)\n> ";
-    int choice;
-    cin >> choice;
-    if(choice==1){
-        player.health += 20;
-        cout << "Health is now " << player.health << "\n";
-    } else {
-        player.attack += 5;
-        player.defense += 5;
-        cout << "Attack: " << player.attack << ", Defense: " << player.defense << "\n";
-    }
+    cout << "1. Drink potion (+20 health)\n2. Train (+5 attack,+5 defense)\n> ";
+    int choice=getStrictInput({1,2});
+    if(choice==1){ player.health+=20; cout << "Health: " << player.health << "\n"; }
+    else { player.attack+=5; player.defense+=5; cout << "Attack: " << player.attack << ", Defense: " << player.defense << "\n"; }
 }
 
 void campaign(){
     srand(time(0));
     Character player;
-    cout << "Enter your hero's name: ";
-    cin >> player.name;
-    cout << "Choose class (Paladin/Alchemist): ";
-    cin >> player.type;
-    player.health = 100;
-    player.attack = (player.type=="Paladin")? 15:12;
-    player.defense = (player.type=="Paladin")? 10:8;
-    player.gold = 50;
+    cout << "Enter your hero's name: "; cin >> player.name;
 
-    vector<Character> foes = {
-        {"Goblin","Alchemist",40,8,5,0},
-        {"Orc","Paladin",50,12,8,0},
-        {"Dark Knight","Paladin",60,15,10,0},
-        {"Sorcerer","Alchemist",55,14,9,0},
-        {"Dragon","Paladin",100,20,12,0}
-    };
+    cout << "Choose class:\n1. Paladin\n2. Alchemist\n> ";
+    int classChoice=getStrictInput({1,2});
+    if(classChoice==1){ player.type="Paladin"; player.health=100; player.attack=15; player.defense=10; }
+    else { player.type="Alchemist"; player.health=100; player.attack=12; player.defense=8; }
+    player.gold=50;
+
+    vector<Character> foes={{"Goblin","Alchemist",40,8,5,0},{"Orc","Paladin",50,12,8,0},
+                            {"Dark Knight","Paladin",60,15,10,0},{"Sorcerer","Alchemist",55,14,9,0},
+                            {"Dragon","Paladin",100,20,12,0}};
 
     for(int i=0;i<foes.size();i++){
-        Character &foe = foes[i];
+        Character &foe=foes[i];
         cout << "\n--- Battle " << i+1 << ": " << foe.name << " ---\n";
         TicTacToe battle;
         battle.setupBattleMode('X','O',player.type,foe.type);
 
-        if(foe.name == "Dragon"){
+        if(foe.name=="Dragon"){
             while(player.health>0 && foe.health>0)
-                battle.battleRound(player.health, player.attack, player.defense,
-                                   foe.health, foe.attack, foe.defense, foe.name);
+                battle.battleRound(player.health,player.attack,player.defense,
+                                   foe.health,foe.attack,foe.defense,foe.name);
         } else {
             while(player.health>0 && foe.health>0)
-                battle.battleRound(player.health, player.attack, player.defense,
-                                   foe.health, foe.attack, foe.defense);
+                battle.battleRound(player.health,player.attack,player.defense,
+                                   foe.health,foe.attack,foe.defense);
         }
 
-        if(player.health<=0){
-            cout << "You have been defeated! Campaign restarts.\n";
-            return;
-        } else {
-            cout << "You defeated " << foe.name << "!\n";
-            player.gold += 20;
-            if(i<foes.size()-1) event(player);
-        }
+        if(player.health<=0){ cout << "You have been defeated! Campaign restarts.\n"; return; }
+        else{ cout << "You defeated " << foe.name << "!\n"; player.gold+=20; if(i<foes.size()-1) event(player);}
     }
     cout << "\nCongratulations " << player.name << "! You completed the campaign!\n";
 }
@@ -227,29 +262,21 @@ int main(){
     TicTacToe game;
 
     while(true){
-        cout << "\n=== Tic-Tac-Toe Menu ===\n";
-        cout << "1. Player vs Player\n";
-        cout << "2. Battle Tic-Tac-Toe (PvP with classes)\n";
-        cout << "3. Campaign/RPG Mode\n";
-        cout << "4. Exit\n";
-        cout << "Choose an option: ";
-        int choice;
-        cin >> choice;
+        cout << "\n=== Tic-Tac-Toe Menu ===\n1. Player vs Player\n2. Battle PvP with classes\n3. Campaign/RPG\n4. Exit\n> ";
+        int choice=getStrictInput({1,2,3,4});
 
-        if(choice==1){
-            game.playPvP();
-        } else if(choice==2){
-            string p1Type, p2Type;
-            char p1Mark, p2Mark;
+        if(choice==1) game.playPvP();
+        else if(choice==2){
+            char p1Mark,p2Mark; string p1Type,p2Type;
             cout << "Player 1, choose mark: "; cin >> p1Mark;
-            cout << "Player 1, choose class (Paladin/Alchemist): "; cin >> p1Type;
+            cout << "Player 1, choose class: 1. Paladin 2. Alchemist\n> "; p1Type=(getStrictInput({1,2})==1)?"Paladin":"Alchemist";
             cout << "Player 2, choose mark: "; cin >> p2Mark;
-            cout << "Player 2, choose class (Paladin/Alchemist): "; cin >> p2Type;
-            game.setupBattleMode(p1Mark, p2Mark, p1Type, p2Type);
+            cout << "Player 2, choose class: 1. Paladin 2. Alchemist\n> "; p2Type=(getStrictInput({1,2})==1)?"Paladin":"Alchemist";
+
+            game.setupBattleMode(p1Mark,p2Mark,p1Type,p2Type);
             game.playPvP();
-        } else if(choice==3){
-            campaign();
-        } else break;
+        } else if(choice==3) campaign();
+        else break;
     }
     cout << "Thanks for playing!\n";
     return 0;
