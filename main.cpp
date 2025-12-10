@@ -84,15 +84,19 @@ public:
 
     void switchPlayer() { currentPlayer = (currentPlayer==player1Mark)?player2Mark:player1Mark; }
 
-    
     bool battleRound(int &playerHealth, int playerAttack, int playerDefense,
-                     int &opponentHealth, int opponentAttack, int opponentDefense){
+                     int &opponentHealth, int opponentAttack, int opponentDefense,
+                     string opponentName = "") {
+
         resetBoard();
         currentPlayer = player1Mark;
+        int originalPlayerDefense = playerDefense;
+
         while(true){
             printBoard();
             int move = (currentPlayer==player1Mark)? getPlayerMove() : getRandomMove();
             makeMove(move);
+
             if(checkWin()){
                 if(currentPlayer==player1Mark){
                     int dmg = max(0, playerAttack-opponentDefense);
@@ -100,8 +104,20 @@ public:
                     cout << "You won this round! Opponent lost " << dmg << " health.\n";
                 } else {
                     int dmg = max(0, opponentAttack-playerDefense);
+                    if(opponentName == "Dragon"){
+                        int abilityRoll = rand()%2;
+                        if(abilityRoll == 0){
+                            cout << "Dragon uses Fire Breath! Extra 10 damage!\n";
+                            dmg += 10;
+                        } else {
+                            cout << "Dragon uses Tail Swipe! Your defense is reduced by 5 for this round!\n";
+                            playerDefense = max(0, playerDefense-5);
+                            dmg = max(0, opponentAttack-playerDefense);
+                        }
+                    }
                     playerHealth -= dmg;
                     cout << "Opponent won this round! You lost " << dmg << " health.\n";
+                    playerDefense = originalPlayerDefense;
                 }
                 return (playerHealth>0 && opponentHealth>0);
             } else if(checkTie()){
@@ -112,7 +128,6 @@ public:
         }
     }
 
-    
     void playPvP() {
         resetBoard();
         currentPlayer = 'X';
@@ -133,7 +148,6 @@ public:
         }
     }
 };
-
 
 struct Character {
     string name;
@@ -160,7 +174,6 @@ void event(Character &player){
     }
 }
 
-
 void campaign(){
     srand(time(0));
     Character player;
@@ -178,7 +191,7 @@ void campaign(){
         {"Orc","Paladin",50,12,8,0},
         {"Dark Knight","Paladin",60,15,10,0},
         {"Sorcerer","Alchemist",55,14,9,0},
-        {"Dragon","Paladin",100,20,12,0} // final boss
+        {"Dragon","Paladin",100,20,12,0}
     };
 
     for(int i=0;i<foes.size();i++){
@@ -186,9 +199,16 @@ void campaign(){
         cout << "\n--- Battle " << i+1 << ": " << foe.name << " ---\n";
         TicTacToe battle;
         battle.setupBattleMode('X','O',player.type,foe.type);
-        while(player.health>0 && foe.health>0)
-            battle.battleRound(player.health, player.attack, player.defense,
-                               foe.health, foe.attack, foe.defense);
+
+        if(foe.name == "Dragon"){
+            while(player.health>0 && foe.health>0)
+                battle.battleRound(player.health, player.attack, player.defense,
+                                   foe.health, foe.attack, foe.defense, foe.name);
+        } else {
+            while(player.health>0 && foe.health>0)
+                battle.battleRound(player.health, player.attack, player.defense,
+                                   foe.health, foe.attack, foe.defense);
+        }
 
         if(player.health<=0){
             cout << "You have been defeated! Campaign restarts.\n";
@@ -201,7 +221,6 @@ void campaign(){
     }
     cout << "\nCongratulations " << player.name << "! You completed the campaign!\n";
 }
-
 
 int main(){
     srand(time(0));
