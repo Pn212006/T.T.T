@@ -1,0 +1,9 @@
+eaff
+Paladin
+100 20 15 70
+1
+Goblin 40
+Orc 50
+Dark Knight 60
+Sorcerer 55
+Dragon 120
